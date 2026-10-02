@@ -15,17 +15,27 @@ label is not graded.
 
 **GitHub username**
 
-[Your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comment upstream is identified by this name, and it is
-the only thing that ties it to you. Several students may plan the same
-house issue, so this is what keeps their comments off your score and
-yours off theirs.]
+VenkataSriSaiSuryaMandava
 
 **Plan comment**
 
-[Link to the comment where you posted your plan on the issue. Use the comment's own
-permalink. **Then paste the text of that comment underneath the link** — the pasted text is
-what this field is graded on, so copy across what you actually posted.]
+https://github.com/codepath/pathreview-ai301-fa26-s1/issues/1#issuecomment-5946754853
+
+### Diagnosis
+In `ingestion/pipeline.py`, `_check_skip()` queries `self.db_session.query("IngestedSource").filter_by(source_id=source_id)`.
+As captured in reproduction report https://github.com/codepath/pathreview-ai301-fa26-s1/issues/1#issuecomment-5849142890, this raises:
+`ArgumentError: Textual column expression 'IngestedSource' should be explicitly declared with text('IngestedSource'), or use column('IngestedSource') for more specificity`
+
+The `except Exception` block swallows this error and returns `None`. Additionally, `IngestedSource` in `core/models/ingested_source.py` currently lacks the `source_id` column used by pipeline queries, and `_record_ingested_source()` only logs rather than persisting records to `self.db_session`.
+
+### Proposed Changes
+- `core/models/ingested_source.py` & Alembic migration: Add indexed `source_id` column to `IngestedSource`.
+- `ingestion/pipeline.py`: Import `IngestedSource` and update `_check_skip()` to query `self.db_session.query(IngestedSource).filter_by(source_id=source_id).first()`. Update `_record_ingested_source()` to persist `IngestedSource` records with `db_session.commit()`.
+- `tests/unit/test_ingestion_pipeline.py`: Add unit tests validating skip detection and deduplication with `@pytest.mark.unit`.
+
+### Verification
+- Seed an `IngestedSource` row with `source_id="test-repo-123"` and invoke `_check_skip("test-repo-123", "repo")`: verify return value is `IngestResult(skipped=True)` with no `ArgumentError`.
+- Execute `make test-unit` to confirm all unit tests pass cleanly.
 
 ---
 
@@ -33,47 +43,102 @@ what this field is graded on, so copy across what you actually posted.]
 
 **Branch**
 
-[The name of the branch you built the change on, exactly as it appears in your fork. The
-naming shape is a type prefix, then the issue number, then a short description. **The issue
-number in the branch name must be the number of the issue you claimed** — a name carrying
-any other number does not satisfy this field.]
+fix/1-check-skip-query
 
 **Evidence**
 
-[Your Unit 2 reproduction steps re-run against the built change: the before, then the
-after. Paste both, including the commands you ran and their output.]
+### Before
+Command:
+```bash
+python3 -c "
+import logging
+from unittest.mock import MagicMock
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from ingestion.pipeline import IngestionPipeline
+
+logging.basicConfig(level=logging.WARNING)
+
+engine = create_engine('sqlite:///:memory:')
+with Session(engine) as session:
+    pipeline = IngestionPipeline(
+        db_session=session,
+        vector_db=MagicMock(),
+        embedding_provider=MagicMock()
+    )
+    result = pipeline._check_skip(source_id='test-repo-123', source_type='repo')
+    print('BEFORE RESULT:', result)
+"
+```
+
+Output:
+```
+2026-09-29 05:49:59 [warning ] Could not check if source already ingested error="Textual column expression 'IngestedSource' should be explicitly declared with text('IngestedSource'), or use column('IngestedSource') for more specificity" source_id=test-repo-123
+BEFORE RESULT: None
+```
+
+### After
+
+Command:
+
+```bash
+.venv/bin/python3 -c "
+import logging
+from unittest.mock import MagicMock
+from uuid import uuid4
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from core.models.ingested_source import IngestedSource
+from ingestion.pipeline import IngestionPipeline
+
+logging.basicConfig(level=logging.INFO)
+
+engine = create_engine('sqlite:///:memory:')
+IngestedSource.__table__.create(engine, checkfirst=True)
+
+with Session(engine) as session:
+    pipeline = IngestionPipeline(
+        db_session=session,
+        vector_db=MagicMock(),
+        embedding_provider=MagicMock()
+    )
+
+    # 1. First run records source
+    pipeline._record_ingested_source('test-repo-123', 'repo', str(uuid4()), 5)
+
+    # 2. Re-ingestion check
+    result = pipeline._check_skip(source_id='test-repo-123', source_type='repo')
+    print('REPRO RESULT:', result)
+"
+```
+
+Output:
+```
+2026-10-02 16:40:03 [info      ] Recording ingested source      chunk_count=5 profile_id=73260b02-90e2-475b-a6a6-9f179643d8ba source_id=test-repo-123 source_type=repo
+2026-10-02 16:40:03 [info      ] Source already ingested, skipping source_id=test-repo-123
+REPRO RESULT: IngestResult(source_id='test-repo-123', chunk_count=0, skipped=True, skip_reason='Source already ingested')
+```
 
 ## Eval iterations
 
-Answer all four sections. Quote source text directly; paraphrase does not satisfy these
-fields.
+Answer all four sections. Quote source text directly; paraphrase does not satisfy these fields.
 
 **Run history**
 
-[The agreement score of each run you did, in order. A single run is a complete answer if
-only one run occurred. **The last score in your list must match the agreement line in the
-`eval-run.txt` you committed** — that file is the record of your final run.]
+20/20 scored items
 
 **Package analysis**
 
-[Pick one scored package (`pkg-01` through `pkg-20` — the four `calib-` packages are never
-scored). Name it by id, say what your rubric decided and what the gold label said, and
-explain why your rubric read it that way.]
+`pkg-04`: Rubric decided `reject`, gold label was `reject`. In `pkg-04`, the plan proposes a workaround that bypasses maintainer instructions specified directly in the issue thread, and ignores explicit repository conventions regarding disclosure and scope. The rubric evaluates `thread-convention` against `Thread highlights` and `Repo facts`: because the proposed plan fails to adhere to maintainer direction in the thread, `thread-convention` receives a grade of `fail`. Under the verdict rule, any required check failing results in a package decision of `reject`, matching the gold label.
 
 **Check rationale**
 
-[Quote one check from the `rubric.md` you uploaded to `tools/plan-check/`, exactly as it reads now.
-Then say why it reads that way — what you revised to get there, or what you rejected in
-favour of it.]
+"| grounded-diagnosis | Plan's stated diagnosis/root cause read against `Repro evidence` (and `Issue` description) | Pass if the identified root cause and error mechanism directly explain and align with the failure symptoms, logs, or error traces shown in the reproduction evidence; fail if the diagnosis contradicts, ignores, or misattributes the proven breakdown to an unaffected component or layer. | required |"
+
+This check was refined from an earlier, looser definition that only checked whether the plan had a non-empty Diagnosis section. We revised it to strictly evaluate alignment against literal reproduction logs and error traces (`Repro evidence`) because plans that misattributed failures to unrelated parts of the codebase were previously slipping through as plausible-sounding but completely incorrect.
 
 **Trade-offs**
 
-[Every check gives something up. Any one of these is a complete answer: a package whose
-result it changes, a canary you re-ran with `--only`, a case you accept it will miss, or a
-stated reason nothing changed elsewhere. "Nothing changed, and here is how I know" earns
-the point in full when the reason follows.]
+By requiring `grounded-diagnosis` to strictly match the symptoms and logs in `Repro evidence`, the check accepts that it will reject plans where the author has identified a real upstream root cause that differs superficially from the initial symptom trace, until the author provides an explicit reproduction trace connecting the two. Nothing changed elsewhere in the benchmark suites across the remaining categories, and we know this because the eval run achieved 20/20 agreement (PASS) with 0 regressions across all 5 categories (`clear-accept 7/7`, `scope-creep 4/4`, `thread-convention 2/2`, `unbuildable 3/3`, `wrong-cause 4/4`).
 
----
-
-Related paths: `plan.md` and `eval-run.txt` in this directory; your skill's files in
-`tools/plan-check/`.
+Related paths: `plan.md` and `eval-run.txt` in this directory; your skill's files in `tools/plan-check/`.
