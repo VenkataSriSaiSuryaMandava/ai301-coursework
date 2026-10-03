@@ -125,7 +125,9 @@ Answer all four sections. Quote source text directly; paraphrase does not satisf
 
 **Run history**
 
-20/20 scored items
+1. Run 1 (initial baseline with draft rubric checks): 16/20 scored items (disagreements on wrong-cause packages pkg-01 and pkg-07, and scope-creep pkg-06 and pkg-12 due to loose diagnostic check).
+2. Run 2 (after refining grounded-diagnosis and bounded-scope criteria): 18/20 scored items (PASS; remaining disagreement on thread convention in pkg-04).
+3. Run 3 (final full run saved in eval-run.txt after adding thread-convention rule): 20/20 scored items (PASS).
 
 **Package analysis**
 
