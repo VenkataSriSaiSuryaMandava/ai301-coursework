@@ -40,9 +40,9 @@ Reasoning: `pkg-01` belongs to the `standards-wall` category. The PR omitted req
 **Check rationale**
 
 Check from `rubric.md`:
-| `decisive-test-evidence` | `test_evidence.md`, PR testing section | Pre-fix execution exhibits the failure mode described in the issue; post-fix execution demonstrates passing tests; all repo checks (unit, lint, typecheck) pass or have documented valid environment exemptions. | required |
+| decisive-test-evidence | Test evidence section read against the plan's repro steps, test plan, and repo checks | Pass if the evidence shows observable test execution, test runner pass outputs, or before-and-after command runs demonstrating the fix, and exercises the changed bug path; fail if evidence is mere unbacked conversational assertions ("tested locally, works"), exercises only an untouched path, or shows no execution output at all. | required |
 
-Rationale: This check requires test evidence to demonstrate both the pre-fix failure path and post-fix resolution rather than accepting a raw pytest output alone. In earlier revisions, runs could pass simply by showing a single green test, which failed to catch silent regressions or false-positive tests that never exercised the actual bug.
+Rationale: This check evaluates whether submitted test evidence actually confirms functionality against the plan rather than merely reporting a generic pass. It checks the test evidence section against the plan's repro steps, test plan, and repo checks to ensure that observable test execution, runner pass outputs, or before-and-after command runs are present. It was scoped to accept clear command outputs and runner passes to avoid rejecting valid workflows while ensuring unverified changes are stopped.
 
 **Trade-offs**
 
