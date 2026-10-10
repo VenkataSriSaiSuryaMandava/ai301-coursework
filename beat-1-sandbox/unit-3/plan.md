@@ -64,4 +64,3 @@ Consequently, `_check_skip()` consistently returns `None`, leading to duplicate 
 
 ## Deviations
 - **IngestedSource Index Consolidation**: Removed redundant explicit `__table_args__` Index declarations on `IngestedSource` that duplicated `index=True` on mapped columns, and added `index=True` directly to `source_type`. This resolved duplicate index warnings and collisions during SQLite table creation across integration runs.
-. Plan is ready for review and implementation.
