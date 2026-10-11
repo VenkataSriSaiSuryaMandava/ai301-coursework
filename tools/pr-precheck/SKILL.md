@@ -32,16 +32,11 @@ End your response with a fenced JSON block matching this schema exactly:
 
 ```json
 {
-  "item": "<PR URL id or package>",
-  "verdict": "accept|reject",
-  "summary": "<one sentence>",
+  "item": "<PR URL or bundle id>",
   "checks": [
-    {
-      "check": "<check-name>",
-      "verdict": "pass|fail",
-      "evidence": "<quoted evidence or locator>",
-      "reasoning": "<concise explanation>"
-    }
-  ]
+    {"name": "<check name>", "grade": "pass|fail|unclear",
+     "evidence": "<one line: the fact or quote that decided it>"}
+  ],
+  "verdict": "accept|reject"
 }
 ```

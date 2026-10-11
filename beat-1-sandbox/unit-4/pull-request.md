@@ -28,7 +28,10 @@ fields.
 
 **Run history**
 
-20/20 scored items  (bar: 18/20: PASS)
+Only one full run occurred:
+1. Full run: 20/20 scored items (bar: 18/20: PASS)
+
+agreement: 20/20 scored items  (bar: 18/20: PASS)
 
 **Package analysis**
 
